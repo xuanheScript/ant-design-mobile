@@ -71,9 +71,6 @@
 }
 
 .@{keyboardPrefixCls}-wrapper {
-  &.@{keyboardPrefixCls}-wrapper-hide {
-    bottom: -500 * @hd;
-  }
   position: fixed;
   bottom: 0;
   left: 0;
@@ -84,7 +81,7 @@
   font-family: 'PingFang SC';
   background-color: #f6f6f7;
   transition-duration: 0.2s;
-  transition-property: transform display;
+  transition-property: transform all;
   transform: translateZ(0);
 
   table {

@@ -3,7 +3,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { addClass, removeClass } from '../_util/class';
 import CustomKeyboard from './CustomKeyboard';
-import Portal from './Portal';
 import { InputEventHandler } from './PropsType';
 
 const IS_REACT_16 = !!ReactDOM.createPortal;
@@ -37,7 +36,7 @@ class NumberInput extends React.Component<NumberInputProps, any> {
     prefixCls: 'am-input',
     keyboardPrefixCls: 'am-number-keyboard',
   };
-  container: Element;
+  container: any;
   inputRef: HTMLDivElement | null;
 
   constructor(props: NumberInputProps) {
@@ -64,7 +63,9 @@ class NumberInput extends React.Component<NumberInputProps, any> {
   }
 
   componentDidUpdate() {
-    this.renderCustomKeyboard();
+    if (!IS_REACT_16) {
+      this.renderCustomKeyboard();
+    }
   }
 
   addBlurListener = () => {
@@ -109,28 +110,38 @@ class NumberInput extends React.Component<NumberInputProps, any> {
     );
   }
 
-  getContainer() {
-    let container = document.querySelector(
-      `#${this.props.keyboardPrefixCls}-container`,
-    );
-    if (!container) {
-      container = document.createElement('div');
-      container.setAttribute('id', `${this.props.keyboardPrefixCls}-container`);
+  getContainer = () => {
+    if (!this.container) {
+      const container = document.createElement('div');
+      const containerId = `${this.props.prefixCls}-container-${(new Date().getTime())}`;
+      container.setAttribute('id', containerId);
       document.body.appendChild(container);
+      this.container = container;
     }
-    this.container = container;
-    return container;
+    return this.container;
+  }
+
+  removeContainer = () => {
+    if (this.container) {
+      if (!IS_REACT_16) {
+        ReactDOM.unmountComponentAtNode(this.container);
+      }
+      (this.container as any).parentNode.removeChild(this.container);
+      this.container = null;
+    }
   }
 
   renderCustomKeyboard() {
     if (IS_REACT_16) {
       return;
     }
-    customNumberKeyboard = ReactDOM.unstable_renderSubtreeIntoContainer(
-      this,
-      this.getComponent(),
-      this.getContainer(),
-    ) as CustomKeyboard;
+    if (this.state.focus) {
+      customNumberKeyboard = ReactDOM.unstable_renderSubtreeIntoContainer(
+        this,
+        this.getComponent(),
+        this.getContainer(),
+      ) as CustomKeyboard;
+    }
   }
 
   doBlur = (ev: MouseEvent) => {
@@ -143,18 +154,15 @@ class NumberInput extends React.Component<NumberInputProps, any> {
   unLinkInput = () => {
     if (
       customNumberKeyboard &&
-      customNumberKeyboard.antmKeyboard &&
       customNumberKeyboard.linkedInput &&
       customNumberKeyboard.linkedInput === this
     ) {
       customNumberKeyboard.linkedInput = null;
-      addClass(
-        customNumberKeyboard.antmKeyboard,
-        `${this.props.keyboardPrefixCls}-wrapper-hide`,
-      );
     }
+
     // for unmount
     this.removeBlurListener();
+    this.removeContainer();
   }
 
   onInputBlur = (value: string) => {
@@ -180,12 +188,6 @@ class NumberInput extends React.Component<NumberInputProps, any> {
       () => {
         if (customNumberKeyboard) {
           customNumberKeyboard.linkedInput = this;
-          if (customNumberKeyboard.antmKeyboard) {
-            removeClass(
-              customNumberKeyboard.antmKeyboard,
-              `${this.props.keyboardPrefixCls}-wrapper-hide`,
-            );
-          }
           customNumberKeyboard.confirmDisabled = value === '';
           if (customNumberKeyboard.confirmKeyboardItem) {
             if (value === '') {
@@ -273,15 +275,10 @@ class NumberInput extends React.Component<NumberInputProps, any> {
   }
 
   renderPortal() {
-    if (!IS_REACT_16) {
-      return null;
+    if (IS_REACT_16 && this.state.focus) {
+      // TODO for react@16 createPortal animation
+      return (ReactDOM as any).createPortal(this.getComponent(), this.getContainer());
     }
-
-    return (
-      <Portal getContainer={() => this.getContainer()}>
-        {this.getComponent()}
-      </Portal>
-    );
   }
 
   render() {
